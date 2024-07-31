@@ -1,6 +1,5 @@
-# Import pacakges yang diperlukan untuk Web Scrapping 
+# # Import pacakges yang diperlukan untuk Web Scrapping 
 from selenium import webdriver
-from bs4 import BeautifulSoup
 import numpy as np 
 import pandas as pd
 import time
@@ -37,7 +36,7 @@ for page in range(total_page):
         stopScrolling += 1
         driver.execute_script("window.scrollBy(0,140)")
         time.sleep(0.5)
-        if stopScrolling > 50:
+        if stopScrolling > 40:
             break
     list_product_element = driver.find_elements(By.CLASS_NAME,"css-5wh65g")
     for product_element in list_product_element:
@@ -49,11 +48,8 @@ for page in range(total_page):
             list_url.append(url)
         
     for url in list_url:
-        df = pd.DataFrame(list_question_scrapping,columns=['question'])
-        df.to_csv("question1.csv",index=False)
         if url != None:
             driver.get(url)
-            print("last_total_product = ",last_total_product)
             last_total_product += 1
             time.sleep(10)
             stopScrolling = 0
@@ -68,18 +64,7 @@ for page in range(total_page):
                 btn_discuss_nav.click()
             except:
                 pass
-                # stopScrolling = 0
-                # while True:
-                #     stopScrolling += 1
-                #     driver.execute_script("window.scrollBy(0,140)")
-                #     time.sleep(0.5)
-                #     if stopScrolling > 30:
-                #         break
             try:
-                # list_button_pagination_discussion = driver.find_elements(By.CLASS_NAME,"css-bugrro-unf-pagination-item")
-                # total_page_discussion = int(list_button_pagination_discussion[-1].text)
-                
-                # for index_page_discussion in range(total_page_discussion):
                 time.sleep(10)
                 stopScrolling = 0
                 while True:
@@ -103,5 +88,8 @@ for page in range(total_page):
                     button_next_discussion = driver.find_elements(By.CLASS_NAME,"css-16uzo3v-unf-pagination-item")[-1]
             except:
                 pass
-
-time.sleep(5)
+    
+    df_input = pd.DataFrame(list_question_scrapping,columns=['question'])
+    df_total = pd.read_csv("../../dataset/question.csv")
+    df_result = pd.concat([df_input,df_total],axis=0)
+    df_result.to_csv("../../dataset/question.csv",index=False)
