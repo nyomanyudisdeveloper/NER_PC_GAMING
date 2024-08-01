@@ -39,33 +39,7 @@ def clean_special_character(text):
             result += " "
     return result
 
-def replace_slang(word):
-    slang = pd.read_csv("/opt/airflow/dags/Slang2.csv")
-    slang_dict = dict(zip(slang['slang'], slang['formal']))
 
-    # del specific key because it is not neccessary for PC GAMING NER scenario 
-    del slang_dict['main']
-    del slang_dict['banget']
-    del slang_dict['uhh']
-    del slang_dict['takut']
-    del slang_dict['da']
-    del slang_dict['uhhh']
-
-    # edit specific key in slang_dict 
-    slang_dict['dahhhh'] = 'sudah'
-    slang_dict['kalo'] = 'kalau'
-    # Replace each token if it matches a slang term
-    steming_slang = slang_dict.get(word)
-    if steming_slang == None:
-        return word
-    else:
-        try:
-            if(math.isnan(steming_slang)):
-                return word
-            else:
-                return steming_slang
-        except:
-            return steming_slang
 
 def extract_from_postgresql():
     # create connection to postgresql
@@ -119,7 +93,36 @@ def transform_preProcessing_text():
     df_token = pd.DataFrame(list_result)
     df_token
 
-    # This code is used to remove slang word
+    # df_token.to_csv("/opt/airflow/dags/DatasetWithTag.csv",index=False)
+
+    # # This code is used to remove slang word
+    
+    def replace_slang(word):
+        slang = pd.read_csv("/opt/airflow/dags/Slang2.csv")
+        slang_dict = dict(zip(slang['slang'], slang['formal']))
+        # del specific key because it is not neccessary for PC GAMING NER scenario 
+        del slang_dict['main']
+        del slang_dict['banget']
+        del slang_dict['uhh']
+        del slang_dict['takut']
+        del slang_dict['da']
+        del slang_dict['uhhh']
+
+        # edit specific key in slang_dict 
+        slang_dict['dahhhh'] = 'sudah'
+        slang_dict['kalo'] = 'kalau'
+        # Replace each token if it matches a slang term
+        steming_slang = slang_dict.get(word)
+        if steming_slang == None:
+            return word
+        else:
+            try:
+                if(math.isnan(steming_slang)):
+                    return word
+                else:
+                    return steming_slang
+            except:
+                return steming_slang
     df_token['kata'] = df_token['kata'].apply(replace_slang)
 
     # Create object that use to stemming word in indonesia using Sastrawati
@@ -135,12 +138,12 @@ def transform_preProcessing_text():
         return stemmed_word
     df_token['kata_steming'] = df_token['kata'].apply(steming_word_sastrawi)
 
-    # Steming using manual word
+    # # Steming using manual word
     list_kata_dasar = ['setting','packing','offline','pc','seting','memory','software','ssd','halo','render','ongkir','ganti','upgrade','vga','mobo','case','casing','install','keyboard','ddr','processor','hdd','storage']
     for kata_dasar in list_kata_dasar:
         df_token.loc[df_token['kata'].str.contains(kata_dasar),'kata'] = kata_dasar
 
-    # Remove stopword in df_token saraswati  
+    # # Remove stopword in df_token saraswati 
     stopword_factory = StopWordRemoverFactory()
     stopword_remover = stopword_factory.create_stop_word_remover()
     def remove_stopword(word):
@@ -149,58 +152,39 @@ def transform_preProcessing_text():
         return stopword_word  
     df_token['kata_steming'] = df_token['kata_steming'].apply(remove_stopword)
 
-    df_token['kata'] = df_token['kata_steming']
-    df_token = df_token[['sentence','kata','tag']]
+    # df_token['kata'] = df_token['kata_steming']
+    # df_token = df_token[['sentence','kata','tag']]
 
     # def fill_tag(sentence,kata):
-    #     tag = df_kata_tag[(df_kata_tag['sentence'] == sentence) & (df_import['kata'] == kata)][['tag']].values
+    #     tag = df_kata_tag[(df_kata_tag['sentence'] == sentence) & (df_kata_tag['kata'] == kata)][['tag']].values
     #     try:
     #         return tag[0][0]
     #     except:
     #         return ''
 
-    # df_token['tag'] = df_token.apply(lambda row_data: fill_tag(row_data['sentence'],row_data['kata']),axis=1)
+    df_token['tag'] = df_token.apply(lambda row_data: fill_tag(row_data['sentence'],row_data['kata']),axis=1)
 
     df_token.to_csv("/opt/airflow/dags/DatasetWithTag.csv",index=False)
 
 
+def load_to_elasticsearch():
+    # create connection to elasticsearch
+    es = Elasticsearch('http://elasticsearch:9200') 
 
+    # read file from file csv data clean
+    df= pd.read_csv('/opt/airflow/dags/DatasetWithTag.csv')
 
+    # looping for every row data in df
+    for i,r in df.iterrows():
+        # convert row data to format json
+        doc=r.to_json()
 
-
-# def post_to_elasticsearch():
-#     # create connection to elasticsearch
-#     es = Elasticsearch('http://elasticsearch:9200') 
-
-#     # read file from file csv data clean
-#     df= pd.read_csv('/opt/airflow/dags/P2M3_yudis_aditya_data_clean.csv')
-
-#     # create new column alias for visualization purpose 
-#     df['grade_class_alias'] = df['grade_class'].apply(convert_grade_class_alias)
-
-#     df['volunteering_alias'] = df['volunteering'].apply(convert_yes_no)
-#     df['music_alias'] = df['music'].apply(convert_yes_no)
-#     df['sports_alias'] = df['sports'].apply(convert_yes_no)
-#     df['extracurricular_alias'] = df['extracurricular'].apply(convert_yes_no)
-#     df['tutoring_alias'] = df['tutoring'].apply(convert_yes_no)
-
-#     df['parental_education_alias'] = df['parental_education'].apply(convert_parental_education_alias)
-#     df['parental_support_alias'] = df['parental_support'].apply(convert_parental_support_alias)
-
-#     df['gender_alias'] = df['gender'].apply(convert_gender_alias)
-#     df['ethnicity_alias'] = df['ethnicity'].apply(convert_ethnicity_alias)
-
-#     # looping for every row data in df
-#     for i,r in df.iterrows():
-#         # convert row data to format json
-#         doc=r.to_json()
-
-#         # insert data json to index data_warehouse_school_student
-#         res=es.index(index="data_warehouse_school_student",doc_type="doc",body=doc)
+        # insert data json to index data_warehouse_school_student
+        res=es.index(index="data_index_ner_pc_gaming",doc_type="doc",body=doc)
 
 
 default_args = {
-    'owner': 'yudis_aditya6',
+    'owner': 'yudis_aditya4',
     'start_date': dt.datetime(2024, 7, 21),
     'retries': 6,
     'retry_delay': dt.timedelta(seconds=20),
@@ -216,10 +200,10 @@ with DAG('Pipeline_ETL_dataRaw_to_dataClean',
                                  python_callable=extract_from_postgresql)
     transformData = PythonOperator(task_id = 'transform',
                                  python_callable=transform_preProcessing_text)
-    # insertData = PythonOperator(task_id='PostToElasticsearch',
-                                #  python_callable=post_to_elasticsearch)
+    loadData = PythonOperator(task_id='load',
+                                 python_callable=load_to_elasticsearch)
 
 
 
 # getData >> cleandata >> insertData
-extractData >> transformData
+extractData >> transformData >> loadData
