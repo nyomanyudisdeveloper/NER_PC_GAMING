@@ -151,16 +151,17 @@ def transform_preProcessing_text():
         stopword_word = stopword_remover.remove(word)
         return stopword_word  
     df_token['kata_steming'] = df_token['kata_steming'].apply(remove_stopword)
+    df_token = df_token[df_token['kata_steming'] != '']
 
-    # df_token['kata'] = df_token['kata_steming']
-    # df_token = df_token[['sentence','kata','tag']]
+    df_token['kata'] = df_token['kata_steming']
+    df_token = df_token[['sentence','kata','tag']]
 
-    # def fill_tag(sentence,kata):
-    #     tag = df_kata_tag[(df_kata_tag['sentence'] == sentence) & (df_kata_tag['kata'] == kata)][['tag']].values
-    #     try:
-    #         return tag[0][0]
-    #     except:
-    #         return ''
+    def fill_tag(sentence,kata):
+        tag = df_kata_tag[(df_kata_tag['sentence'] == sentence) & (df_kata_tag['kata'] == kata)][['tag']].values
+        try:
+            return tag[0][0]
+        except:
+            return ''
 
     df_token['tag'] = df_token.apply(lambda row_data: fill_tag(row_data['sentence'],row_data['kata']),axis=1)
 
@@ -184,7 +185,7 @@ def load_to_elasticsearch():
 
 
 default_args = {
-    'owner': 'yudis_aditya4',
+    'owner': 'yudis_aditya1',
     'start_date': dt.datetime(2024, 7, 21),
     'retries': 6,
     'retry_delay': dt.timedelta(seconds=20),
