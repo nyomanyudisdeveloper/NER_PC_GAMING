@@ -1,1 +1,4 @@
+selenium
+beautifulsoup4
+pandas
 sastrawi
